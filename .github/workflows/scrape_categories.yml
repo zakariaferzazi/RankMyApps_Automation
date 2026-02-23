@@ -43,7 +43,7 @@ jobs:
           password: gEK3g86pOdnH
           port: 21
           local-dir: ./
-          server-dir: /public_html/
+          server-dir: /public_html/wp-content/themes/astra-child
           exclude: |
             **/*
             !google_play_apps.csv
