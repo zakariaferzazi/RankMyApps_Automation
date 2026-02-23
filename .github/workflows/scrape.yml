@@ -37,5 +37,20 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add google_play_apps.csv
-          # Verify if the CSV has changes. If so, commit and push them
           git diff --quiet && git diff --staged --quiet || (git commit -m "Automated update of google_play_apps.csv" && git push)
+
+      - name: Upload to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: rankmyapps.com
+          username: rankyggl
+          password: gEK3g86pOdnH
+          port: 21
+          # The local file to upload
+          local-dir: ./
+          # The destination folder in your cPanel (from your JSON)
+          server-dir: /public_html/
+          # Only upload the CSV file
+          exclude: |
+            **/*
+            !google_play_apps.csv
