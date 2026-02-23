@@ -24,10 +24,10 @@ from collections import deque
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 10, 
+    'MAX_APPS_TO_SCRAPE': 20, 
     
     # The starting app URL to find similar apps from
-    'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.zhiliaoapp.musically',
+    'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     
     # Output file name
     'OUTPUT_CSV': 'similar_apps_data.csv',
