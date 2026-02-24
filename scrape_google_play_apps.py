@@ -16,7 +16,7 @@ from collections import deque
 # CONFIGURATION
 # ===========================
 CONFIG = {
-    'MAX_APPS_PER_CATEGORY': 3000,
+    'MAX_APPS_PER_CATEGORY': 100,
     'MAX_APPS_TO_SCRAPE_SIMILAR': 1000, 
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     'OUTPUT_CSV': 'google_play_apps.csv',
