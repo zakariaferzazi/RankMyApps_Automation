@@ -182,7 +182,7 @@ class AppStoreSearcher:
             print(f"Error fetching metadata for app {app_id}: {e}")
             return None
     
-    def search_all_categories(self, categories=None, countries=None, output_file='app_store_recent_apps.csv'):
+    def search_all_categories(self, categories=None, countries=None, output_file='app_store_apps.csv'):
         """
         Search apps across multiple categories and countries and save immediately
         
@@ -256,7 +256,7 @@ class AppStoreSearcher:
         print(f"✓ All items saved to {output_file}")
         print(f"{'='*70}\n")
     
-    def save_to_csv(self, filename='app_store_recent_apps.csv'):
+    def save_to_csv(self, filename='app_store_apps.csv'):
         """
         Save app details to CSV
         
@@ -314,11 +314,11 @@ def main():
     searcher.search_all_categories(
         categories=categories_to_search,
         countries=COUNTRIES,
-        output_file='app_store_recent_apps.csv'
+        output_file='app_store_apps.csv'
     )
     
     # Sort results at the end
-    searcher.save_to_csv('app_store_recent_apps.csv')
+    searcher.save_to_csv('app_store_apps.csv')
 
 
 if __name__ == '__main__':

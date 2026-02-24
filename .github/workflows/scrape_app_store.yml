@@ -31,13 +31,13 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          if [ -f app_store_recent_apps.csv ]; then
+          if [ -f app_store_apps.csv ]; then
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
-            git add app_store_recent_apps.csv
+            git add app_store_apps.csv
             
             if ! git diff --staged --quiet; then
-              git commit -m "Automated update of app_store_recent_apps.csv"
+              git commit -m "Automated update of app_store_apps.csv"
               git pull origin master --rebase
               git push origin master
             else
@@ -59,4 +59,4 @@ jobs:
           server-dir: /public_html/wp-content/themes/astra-child/
           exclude: |
             **/*
-            !app_store_recent_apps.csv
+            !app_store_apps.csv
