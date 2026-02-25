@@ -17,12 +17,12 @@ from collections import deque
 # ===========================
 CONFIG = {
     'MAX_APPS_PER_CATEGORY': 100,
-    'MAX_APPS_TO_SCRAPE_SIMILAR': 300, 
+    'MAX_APPS_TO_SCRAPE_SIMILAR': 200, 
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     'OUTPUT_CSV': 'google_play_apps.csv',
     'ONLY_RECENT_APPS': True,
-    'CRAWL_DEPTH': 10,
-    'MAX_SIMILAR_APPS_PER_PAGE': 20,
+    'CRAWL_DEPTH': 5,
+    'MAX_SIMILAR_APPS_PER_PAGE': 10,
     'DELAY_BETWEEN_REQUESTS': 1
 }
 
