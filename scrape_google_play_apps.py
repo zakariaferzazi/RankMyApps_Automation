@@ -16,12 +16,12 @@ from collections import deque
 # CONFIGURATION
 # ===========================
 CONFIG = {
-    'MAX_APPS_PER_CATEGORY': 100,
-    'MAX_APPS_TO_SCRAPE_SIMILAR': 200, 
-    'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
+    'MAX_CATEGORY_SEEDS': 10,           # Apps to grab per category to use as seeds for Phase 2
+    'MAX_APPS_TO_VISIT': 1500,          # Prevent endless crawling loops
+    'TARGET_VALID_APPS': 200,           # Target valid apps to collect
     'OUTPUT_CSV': 'google_play_apps.csv',
     'ONLY_RECENT_APPS': True,
-    'CRAWL_DEPTH': 5,
+    'INSTALL_THRESHOLD': 5000,          # Filter to only low installation apps
     'MAX_SIMILAR_APPS_PER_PAGE': 10,
     'DELAY_BETWEEN_REQUESTS': 1
 }
@@ -67,6 +67,7 @@ class GooglePlayScraper:
         self.driver = None
         self.scraped_apps = {}  # Store extracted data using app_id as key
         self.visited_app_ids = set()
+        self.category_seeds = set()
         
     def initialize_driver(self):
         chrome_options = Options()
@@ -82,7 +83,7 @@ class GooglePlayScraper:
         match = re.search(r'id=([a-zA-Z0-9._]+)', url)
         return match.group(1) if match else None
 
-    def extract_release_date(self, page_source, app_url):
+    def extract_release_date(self, page_source):
         target_string = 'dappgame_ratings"]]],["'
         start_index = page_source.find(target_string)
         
@@ -120,20 +121,50 @@ class GooglePlayScraper:
         except:
             return 0
 
-    def extract_app_details(self, app_url, category_fallback="N/A", is_similar_phase=False):
-        try:
-            self.driver.get(app_url)
+    def scrape_categories_for_seeds(self):
+        print("\n" + "="*40)
+        print("PHASE 1: Scraping Categories for Seeds")
+        print("="*40)
+        print("Extracting a few initial apps from all categories to use as starting points.")
+        
+        for category_name, category_id in CATEGORIES.items():
+            print(f"Fetching seeds from: {category_name}...", end=" ")
+            category_url = f'https://play.google.com/store/apps/category/{category_id}'
+            
             try:
-                WebDriverWait(self.driver, 5).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "h1"))
-                )
-            except:
-                pass
+                self.driver.get(category_url)
+                time.sleep(2)
+                
+                # A couple of quick scrolls
+                for _ in range(2):
+                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(1)
+                
+                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                app_links = set()
+                
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    if '/store/apps/details?id=' in href:
+                        full_url = 'https://play.google.com' + href if href.startswith('/') else href
+                        if '&' in full_url: full_url = full_url.split('&')[0]
+                        app_links.add(full_url)
+                        if len(app_links) >= CONFIG['MAX_CATEGORY_SEEDS']:
+                            break
+                            
+                for url in app_links:
+                    self.category_seeds.add(url)
+                print(f"Found {len(app_links)} app(s).")
+                
+            except Exception as e:
+                print(f"Error: {e}")
+                
+            time.sleep(CONFIG['DELAY_BETWEEN_REQUESTS'])
             
-            time.sleep(1)
-            page_source = self.driver.page_source
-            soup = BeautifulSoup(page_source, 'html.parser')
-            
+        print(f"\nPhase 1 Complete. Collected {len(self.category_seeds)} total category seeds.")
+
+    def parse_and_validate_app_details(self, soup, page_source, app_url):
+        try:
             app_name = "N/A"
             app_name_tag = soup.find('h1', {'itemprop': 'name'})
             if app_name_tag:
@@ -176,7 +207,7 @@ class GooglePlayScraper:
             if rating == "N/A" or "Download" in review_count or "Install" in review_count:
                 review_count = "N/A"
             
-            release_date = self.extract_release_date(page_source, app_url)
+            release_date = self.extract_release_date(page_source)
             
             category_name = "N/A"
             category_tags = soup.find_all('a', {'itemprop': 'genre'})
@@ -184,21 +215,18 @@ class GooglePlayScraper:
                 category_tags = soup.find_all('a', href=re.compile(r'/store/apps/category/'))
             if category_tags:
                 category_name = category_tags[0].text.strip()
-            if category_name == "N/A" and category_fallback != "N/A":
-                category_name = category_fallback
 
-            if is_similar_phase:
-                install_count_numeric = self.parse_install_count(install_count)
-                if install_count_numeric < 5000:
-                    print(f"    [Skipping] Install count '{install_count}' is below 5K threshold.")
-                    return None
+            install_count_numeric = self.parse_install_count(install_count)
+            if install_count_numeric > CONFIG['INSTALL_THRESHOLD']:
+                print(f"    [Skipping] Install count '{install_count}' is above {CONFIG['INSTALL_THRESHOLD']} threshold.")
+                return None
 
-            if CONFIG['ONLY_RECENT_APPS'] or not is_similar_phase:
+            if CONFIG['ONLY_RECENT_APPS']:
                 try:
                     parsed_date = datetime.strptime(release_date, "%b %d, %Y")
                     now = datetime.now()
                     months_diff = (now.year - parsed_date.year) * 12 + (now.month - parsed_date.month)
-                    if not (0 <= months_diff < 3):
+                    if not (0 <= months_diff <= 3):
                         print(f"    [Skipping] Release date '{release_date}' is outside 3 month window.")
                         return None
                 except Exception as e:
@@ -216,126 +244,88 @@ class GooglePlayScraper:
                 'App Link': app_url,
                 'Developer': developer
             }
-            
         except Exception as e:
-            print(f"Error extracting details for {app_url}: {e}")
+            print(f"    [Error] Failed parsing details: {e}")
             return None
 
-    def scrape_categories(self):
+    def crawl_similar_apps(self):
         print("\n" + "="*40)
-        print("PHASE 1: Scraping by Categories")
+        print("PHASE 2: Crawling Similar Apps for Valid Results")
         print("="*40)
         
-        for category_name, category_id in CATEGORIES.items():
-            print(f"\nScraping category: {category_name}")
-            category_url = f'https://play.google.com/store/apps/category/{category_id}'
-            self.driver.get(category_url)
-            time.sleep(3)
-            
-            scroll_count = 0
-            while scroll_count < 10:
-                last_height = self.driver.execute_script("return document.body.scrollHeight")
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1.5)
-                new_height = self.driver.execute_script("return document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                scroll_count += 1
-            
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            app_links = set()
-            for link in soup.find_all('a', href=True):
-                href = link['href']
-                if '/store/apps/details?id=' in href:
-                    full_url = 'https://play.google.com' + href if href.startswith('/') else href
-                    if '&' in full_url: full_url = full_url.split('&')[0]
-                    app_links.add(full_url)
-                    if len(app_links) >= CONFIG['MAX_APPS_PER_CATEGORY']:
-                        break
-            
-            for idx, app_url in enumerate(list(app_links)[:CONFIG['MAX_APPS_PER_CATEGORY']], 1):
-                app_id = self.extract_app_id_from_url(app_url)
-                if app_id in self.visited_app_ids:
-                    continue
+        apps_to_visit = deque(list(self.category_seeds))
+        visited_urls_count = 0
+        
+        while apps_to_visit and visited_urls_count < CONFIG['MAX_APPS_TO_VISIT']:
+            if len(self.scraped_apps) >= CONFIG['TARGET_VALID_APPS']:
+                print(f"\nTarget of {CONFIG['TARGET_VALID_APPS']} valid apps reached!")
+                break
                 
-                print(f"Processing category app {idx}/{len(app_links)}: {app_url}")
-                app_data = self.extract_app_details(app_url, category_fallback=category_name, is_similar_phase=False)
-                if app_data:
-                    self.scraped_apps[app_id] = app_data
-                    print(f"  ✓ Added: {app_data['App Name']}")
-                self.visited_app_ids.add(app_id)
-                time.sleep(CONFIG['DELAY_BETWEEN_REQUESTS'])
-
-    def get_similar_apps(self, app_url):
-        similar_apps = []
-        try:
-            self.driver.get(app_url)
-            time.sleep(0.5)
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
-            time.sleep(0.5)
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(0.5)
-            all_links = self.driver.find_elements(By.XPATH, "//a[contains(@href, '/store/apps/details?id=')]")
-            for link in all_links[:CONFIG['MAX_SIMILAR_APPS_PER_PAGE']]:
-                try:
-                    href = link.get_attribute('href')
-                    if href and '/store/apps/details?id=' in href:
-                        if '&' in href: href = href.split('&')[0]
-                        full_url = href if href.startswith('http') else 'https://play.google.com' + href
-                        similar_apps.append(full_url)
-                except:
-                    pass
-        except Exception as e:
-            print(f"Error collecting similar apps: {e}")
-        return list(set(similar_apps))
-
-    def scrape_similar_apps(self):
-        print("\n" + "="*40)
-        print("PHASE 2: Scraping Similar Apps")
-        print("="*40)
-        
-        apps_to_visit = deque()
-        apps_to_visit.append((CONFIG['SEED_APP_URL'], 0))
-        collected_unprocessed_urls = set()
-        
-        # Step 2A: Crawl for URLs
-        print("Crawling for similar app URLs...")
-        while apps_to_visit and len(collected_unprocessed_urls) < CONFIG['MAX_APPS_TO_SCRAPE_SIMILAR']:
-            current_url, depth = apps_to_visit.popleft()
+            current_url = apps_to_visit.popleft()
             app_id = self.extract_app_id_from_url(current_url)
             
             if not app_id or app_id in self.visited_app_ids:
                 continue
-            
-            collected_unprocessed_urls.add(current_url)
-            print(f"Found [{len(collected_unprocessed_urls)}/{CONFIG['MAX_APPS_TO_SCRAPE_SIMILAR']}]: {app_id}")
-            
-            if depth < CONFIG['CRAWL_DEPTH'] and len(collected_unprocessed_urls) < CONFIG['MAX_APPS_TO_SCRAPE_SIMILAR']:
-                similar = self.get_similar_apps(current_url)
-                for url in similar:
-                    s_id = self.extract_app_id_from_url(url)
-                    if s_id and s_id not in self.visited_app_ids:
-                        apps_to_visit.append((url, depth + 1))
-            time.sleep(0.2)
-            
-        # Step 2B: Extract data for crawled apps
-        print("\nExtracting data for similar apps...")
-        for index, url in enumerate(list(collected_unprocessed_urls)[:CONFIG['MAX_APPS_TO_SCRAPE_SIMILAR']], 1):
-            app_id = self.extract_app_id_from_url(url)
-            if not app_id or app_id in self.visited_app_ids:
-                continue
                 
-            print(f"Processing similar app {index}/{len(collected_unprocessed_urls)}: {app_id}")
-            app_data = self.extract_app_details(url, is_similar_phase=True)
-            if app_data:
-                self.scraped_apps[app_id] = app_data
-                print(f"  ✓ Added: {app_data['App Name']}")
             self.visited_app_ids.add(app_id)
+            visited_urls_count += 1
+            
+            print(f"\nVisiting [{visited_urls_count}/{CONFIG['MAX_APPS_TO_VISIT']}] | Valid: {len(self.scraped_apps)}/{CONFIG['TARGET_VALID_APPS']} | Queue: {len(apps_to_visit)}")
+            print(f"  -> {app_id}")
+            
+            try:
+                self.driver.get(current_url)
+                
+                # Wait for title to ensure page loaded
+                try:
+                    WebDriverWait(self.driver, 4).until(
+                        EC.presence_of_element_located((By.TAG_NAME, "h1"))
+                    )
+                except:
+                    pass
+                
+                # Scroll a bit to render Similar apps section
+                time.sleep(0.5)
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight/3);")
+                time.sleep(0.5)
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight*2/3);")
+                time.sleep(1.0)
+                
+                page_source = self.driver.page_source
+                soup = BeautifulSoup(page_source, 'html.parser')
+                
+                # Extract related apps directly from the same DOM to add to queue
+                similar_links = []
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    if '/store/apps/details?id=' in href and app_id not in href:
+                        full_url = 'https://play.google.com' + href if href.startswith('/') else href
+                        if '&' in full_url: full_url = full_url.split('&')[0]
+                        
+                        s_id = self.extract_app_id_from_url(full_url)
+                        if s_id and s_id not in self.visited_app_ids and full_url not in similar_links:
+                            similar_links.append(full_url)
+                            if len(similar_links) >= CONFIG['MAX_SIMILAR_APPS_PER_PAGE']:
+                                break
+                                
+                if similar_links:
+                    apps_to_visit.extend(similar_links)
+                    print(f"    [+] Queued {len(similar_links)} similar apps.")
+                
+                # Process the currently visited app to see if it matches our desired criteria
+                app_data = self.parse_and_validate_app_details(soup, page_source, current_url)
+                if app_data:
+                    self.scraped_apps[app_id] = app_data
+                    print(f"    ✓ [VALID ADDED] {app_data['App Name']} (Installs: {app_data['Install Count']}, Released: {app_data['Release Date']})")
+                    
+            except Exception as e:
+                print(f"    ✗ Error fetching {app_id}: {e}")
+                
             time.sleep(CONFIG['DELAY_BETWEEN_REQUESTS'])
 
     def save_to_csv(self):
         if not self.scraped_apps:
-            print("No apps to save.")
+            print("\nNo valid apps found to save.")
             return
             
         csv_path = os.path.join(os.path.dirname(__file__), CONFIG['OUTPUT_CSV'])
@@ -352,15 +342,15 @@ class GooglePlayScraper:
                 writer.writeheader()
                 for app in apps_list:
                     writer.writerow(app)
-            print(f"\n✓ Saved {len(apps_list)} unique apps to {csv_path}")
+            print(f"\n✓ Saved {len(apps_list)} unique matching apps to {csv_path}")
         except Exception as e:
             print(f"\n✗ Error saving to CSV: {e}")
 
     def run(self):
         self.initialize_driver()
         try:
-            self.scrape_categories()
-            self.scrape_similar_apps()
+            self.scrape_categories_for_seeds()
+            self.crawl_similar_apps()
             self.save_to_csv()
         except KeyboardInterrupt:
             print("\nScraping interrupted by user!")
