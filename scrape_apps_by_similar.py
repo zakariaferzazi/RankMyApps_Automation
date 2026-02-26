@@ -208,13 +208,7 @@ class SimilarAppsScraper:
             release_date = self.extract_release_date(page_source, app_url)
             
             # --- Extract Category (Niche) ---
-            category_name = "N/A"
-            category_tags = soup.find_all('a', {'itemprop': 'genre'})
-            if not category_tags:
-                # Fallback to general category buttons
-                category_tags = soup.find_all('a', href=re.compile(r'/store/apps/category/'))
-            if category_tags:
-                category_name = category_tags[0].text.strip()
+            category_name = "General"
 
             # --- Date Filter Logic ---
             if CONFIG['ONLY_RECENT_APPS']:
