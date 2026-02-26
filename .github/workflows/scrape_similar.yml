@@ -37,8 +37,9 @@ jobs:
             
             if ! git diff --staged --quiet; then
               git commit -m "Automated update of google_play_apps.csv (similar apps)"
-              git pull origin master --rebase
-              git push origin master
+              # Fetch latest and force push to avoid rebase conflicts
+              git fetch origin master
+              git push -f origin master
             else
               echo "No changes detected. Skipping commit."
             fi
