@@ -29,7 +29,7 @@ CONFIG = {
     # The starting app URL to find similar apps from
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     
-    # Output file name
+    # Output file name (shared with category scraper)
     'OUTPUT_CSV': 'google_play_apps.csv',
     
     # Filter apps by release date? (Only keep apps released in last 3 months)
@@ -139,23 +139,6 @@ class SimilarAppsScraper:
             return install_text.strip()
         return "N/A"
 
-    def parse_install_count(self, install_count_str):
-        """Convert install count string (e.g., '5K+', '1.2M+') to numeric value"""
-        if install_count_str == "N/A":
-            return 0
-        
-        install_count_str = install_count_str.replace('+', '').strip()
-        
-        try:
-            if 'M' in install_count_str.upper():
-                return int(float(install_count_str.upper().replace('M', '')) * 1_000_000)
-            elif 'K' in install_count_str.upper():
-                return int(float(install_count_str.upper().replace('K', '')) * 1_000)
-            else:
-                return int(float(install_count_str))
-        except:
-            return 0
-
     def extract_app_details(self, app_url):
         """Extract detailed information from the app page (Phase 2)"""
         try:
@@ -246,12 +229,6 @@ class SimilarAppsScraper:
                     print(f"    [Skipping] Could not verify release date: {release_date}")
                     return None
 
-            # --- Install Count Filter (5k+ minimum) ---
-            numeric_installs = self.parse_install_count(install_count)
-            if numeric_installs < 5000:
-                print(f"    [Skipping] Install count {install_count} is below 5k threshold.")
-                return None
-
             return {
                 'Niche': category_name,
                 'App Name': app_name,
@@ -269,7 +246,7 @@ class SimilarAppsScraper:
             return None
 
     def save_to_csv(self, app_data):
-        """Save app data to CSV file"""
+        """Save app data to CSV file (append mode, no overwrites)"""
         if not app_data:
             return
             
@@ -282,8 +259,10 @@ class SimilarAppsScraper:
         file_exists = os.path.exists(csv_path)
         
         try:
+            # Always append - never overwrite
             with open(csv_path, 'a', newline='', encoding='utf-8-sig') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=headers)
+                # Only write header if file is brand new
                 if not file_exists:
                     writer.writeheader()
                 writer.writerow(app_data)
@@ -305,11 +284,9 @@ class SimilarAppsScraper:
         self.apps_to_visit.append((CONFIG['SEED_APP_URL'], 0))
         collected_app_urls = set()
         
-        # Note: CSV will be appended to (not removed)
-        # If this is the first script to run, it should be empty
-        # If the category scraper ran first, we'll append to its data
+        # DO NOT remove old CSV - we're appending data from both scripts
         csv_path = os.path.join(os.path.dirname(__file__), CONFIG['OUTPUT_CSV'])
-        print(f"Will append data to: {csv_path}")
+        print(f"Appending data to: {csv_path}")
             
         try:
             # ==================================

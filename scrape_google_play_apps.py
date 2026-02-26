@@ -210,18 +210,11 @@ def extract_app_details(app_url, category_name):
         print(f"Error extracting details for {app_url}: {e}")
         return None
 
-def scrape_category(category_name, category_id, max_apps=100, csv_filename='google_play_apps.csv', is_first_category=False, should_remove_old=False):
+def scrape_category(category_name, category_id, max_apps=100, csv_filename='google_play_apps.csv', is_first_category=False):
     """Scrape apps from a specific category"""
     print(f"\n{'='*60}")
     print(f"Scraping category: {category_name}")
     print(f"{'='*60}")
-    
-    # Remove old CSV only on first category scrape
-    if is_first_category and should_remove_old:
-        csv_path = os.path.join(os.path.dirname(__file__), csv_filename)
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
-            print(f"Removed existing {csv_filename} to start fresh.\n")
     
     apps_saved_count = 0
     
@@ -329,7 +322,7 @@ def save_to_csv(apps_data, filename='google_play_apps.csv', append=False):
     except Exception as e:
         print(f"  ✗ Error saving to CSV: {e}")
 
-def main(should_remove_old_csv=True):
+def main():
     """Main function to orchestrate scraping"""
     print("="*60)
     print("Google Play Store Category Scraper")
@@ -339,19 +332,18 @@ def main(should_remove_old_csv=True):
     total_apps_scraped = 0
     csv_filename = 'google_play_apps.csv'
     
-    # Remove existing CSV file to start fresh (only if specified)
-    if should_remove_old_csv:
-        csv_path = os.path.join(os.path.dirname(__file__), csv_filename)
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
-            print(f"Removed existing file: {csv_filename}\n")
+    # Remove existing CSV file to start fresh
+    csv_path = os.path.join(os.path.dirname(__file__), csv_filename)
+    if os.path.exists(csv_path):
+        os.remove(csv_path)
+        print(f"Removed existing file: {csv_filename}\n")
     
     try:
         # Scrape each category
         for idx, (category_name, category_id) in enumerate(CATEGORIES.items(), 1):
             try:
                 apps_count = scrape_category(category_name, category_id, max_apps=100, 
-                                            csv_filename=csv_filename, is_first_category=(idx == 1), should_remove_old=should_remove_old_csv)
+                                            csv_filename=csv_filename, is_first_category=(idx == 1))
                 
                 total_apps_scraped += apps_count
                 if apps_count > 0:
