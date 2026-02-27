@@ -35,6 +35,9 @@ CONFIG = {
     # Filter apps by release date? (Only keep apps released in last 3 months)
     'ONLY_RECENT_APPS': True,
     
+    # Minimum install count required to save the app
+    'MIN_INSTALLS': 5000,
+    
     # Crawling settings
     'CRAWL_DEPTH': 10,
     'MAX_SIMILAR_APPS_PER_PAGE': 20,
@@ -139,6 +142,25 @@ class SimilarAppsScraper:
             return install_text.strip()
         return "N/A"
 
+    def parse_install_count(self, install_str):
+        """Parse install count string to integer"""
+        if not install_str or install_str == "N/A":
+            return 0
+            
+        clean_str = install_str.upper().replace(',', '').replace('+', '').replace(' ', '')
+        
+        try:
+            if 'K' in clean_str:
+                return int(float(clean_str.replace('K', '')) * 1000)
+            elif 'M' in clean_str:
+                return int(float(clean_str.replace('M', '')) * 1000000)
+            elif 'B' in clean_str:
+                return int(float(clean_str.replace('B', '')) * 1000000000)
+            else:
+                return int(float(clean_str))
+        except ValueError:
+            return 0
+
     def extract_app_details(self, app_url):
         """Extract detailed information from the app page (Phase 2)"""
         try:
@@ -221,6 +243,13 @@ class SimilarAppsScraper:
                         return None
                 except Exception as e:
                     print(f"    [Skipping] Could not verify release date: {release_date}")
+                    return None
+
+            # --- Install Count Filter Logic ---
+            if 'MIN_INSTALLS' in CONFIG and CONFIG['MIN_INSTALLS'] > 0:
+                parsed_installs = self.parse_install_count(install_count)
+                if parsed_installs < CONFIG['MIN_INSTALLS']:
+                    print(f"    [Skipping] Install count '{install_count}' is below {CONFIG['MIN_INSTALLS']} limit.")
                     return None
 
             return {
