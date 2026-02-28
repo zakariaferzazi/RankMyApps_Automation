@@ -28,30 +28,6 @@ jobs:
       - name: Run Google Play Categories Scraper
         run: python scrape_google_play_apps.py
 
-      - name: Commit and push changes
-        run: |
-          if [ -f google_play_apps.csv ]; then
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            
-            # Setup union merge driver to avoid conflicts when both workflows append lines
-            echo "google_play_apps.csv merge=union" > .gitattributes
-            git add .gitattributes
-            git add google_play_apps.csv
-            
-            if ! git diff --staged --quiet; then
-              git commit -m "Automated update of google_play_apps.csv (categories)"
-              # Pull with no-rebase to trigger a merge, trusting the union driver for conflicts
-              git pull origin master --no-rebase -m "Merge automated updates" || true
-              git push origin master
-            else
-              echo "No changes detected. Skipping commit."
-            fi
-          else
-            echo "CSV file not found - scraping may have failed"
-            exit 1
-          fi
-
       - name: Upload to WordPress via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:

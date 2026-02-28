@@ -30,7 +30,7 @@ CONFIG = {
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     
     # Output file name (shared with category scraper)
-    'OUTPUT_CSV': 'google_play_apps.csv',
+    'OUTPUT_CSV': 'google_play_similar_apps.csv',
     
     # Filter apps by release date? (Only keep apps released in last 3 months)
     'ONLY_RECENT_APPS': True,

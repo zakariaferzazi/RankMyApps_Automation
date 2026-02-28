@@ -29,25 +29,6 @@ jobs:
       - name: Run App Store Scraping Script
         run: python appstore_search_by_category.py
 
-      - name: Commit and push changes
-        run: |
-          if [ -f app_store_apps.csv ]; then
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            git add app_store_apps.csv
-            
-            if ! git diff --staged --quiet; then
-              git commit -m "Automated update of app_store_apps.csv"
-              git pull origin master --rebase
-              git push origin master
-            else
-              echo "No changes detected. Skipping commit."
-            fi
-          else
-            echo "CSV file not found - scraping may have failed"
-            exit 1
-          fi
-
       - name: Upload to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
