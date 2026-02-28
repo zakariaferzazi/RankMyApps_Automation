@@ -36,10 +36,10 @@ jobs:
         run: python appstore_search_by_category.py
         continue-on-error: true
       
-      - name: Merge with existing data
+      - name: Merge with existing data (all 3 files)
         run: python merge_csv_data.py
       
-      - name: Upload to WordPress via FTP
+      - name: Upload all files to WordPress via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.1.0
         with:
           server: ${{ secrets.FTP_SERVER }}

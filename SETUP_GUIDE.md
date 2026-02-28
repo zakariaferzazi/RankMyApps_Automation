@@ -4,9 +4,9 @@
 
 This project contains three web scraping scripts that collect app data from Google Play Store and Apple App Store. The workflow:
 
-1. **Scrape** apps from multiple sources
-2. **Merge** new data with existing data (no duplicates)
-3. **Upload** merged file to WordPress
+1. **Scrape** apps from multiple sources (all 3 scripts)
+2. **Merge** new data with existing WordPress data (no duplicates for each file)
+3. **Upload** all 3 merged files to WordPress via FTP
 
 ## Scripts
 
@@ -26,10 +26,10 @@ This project contains three web scraping scripts that collect app data from Goog
 - Outputs: `google_play_similar_apps.csv` (can be configured)
 
 ### 4. `merge_csv_data.py` ✨ NEW
-- Downloads existing CSV from WordPress
-- Merges new scraped data
-- **Deduplicates by App Link** (most reliable method)
-- Creates merged file ready for upload
+- Downloads **all 3 CSV files** from WordPress
+- Merges each with newly scraped data
+- **Deduplicates by App Link** (separately for each file)
+- Creates all 3 merged files ready for upload
 
 ## GitHub Actions Workflow Setup
 
@@ -101,22 +101,25 @@ This will create `google_play_apps.csv` with merged data.
 
 ## Data Merge Logic
 
-The `merge_csv_data.py` script:
+The `merge_csv_data.py` script handles **all 3 CSV files** independently:
 
-1. ✓ Downloads existing CSV from your WordPress site
+For each file:
+1. ✓ Downloads existing version from WordPress
 2. ✓ Loads new scraped data
 3. ✓ **Deduplicates by "App Link" field** (most reliable)
 4. ✓ Keeps all existing records
 5. ✓ Adds/updates with new data
 6. ✓ Saves merged result for upload
 
-**Example:**
+**Example** (for each file):
 ```
 Existing data:  1000 apps
 New data:        500 apps
 Duplicates:      250 apps (same App Link)
 After merge:   1250 apps (1000 + 250 new)
 ```
+
+All 3 files are uploaded simultaneously via FTP.
 
 ## Important Notes
 
@@ -133,11 +136,13 @@ After merge:   1250 apps (1000 + 250 new)
 - Only merge runs after scraping completes
 - Check logs in GitHub Actions to verify success
 
-⚠️ **File Naming**
-- Google Play: `google_play_apps.csv`
-- App Store: `app_store_apps.csv`
-- Similar Apps: `google_play_similar_apps.csv`
-- Merged output: `google_play_apps.csv`
+⚠️ **File Naming & Processing**
+- All 3 files are **scraped**, **merged**, and **uploaded**:
+  - `google_play_apps.csv` (Play Store by category) - merged ✓
+  - `app_store_apps.csv` (App Store by category) - merged ✓
+  - `google_play_similar_apps.csv` (Play Store by similar) - merged ✓
+- Each file is deduplicated independently
+- All files uploaded simultaneously via FTP
 
 ## Troubleshooting
 

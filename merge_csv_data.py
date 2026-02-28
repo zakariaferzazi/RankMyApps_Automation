@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-CSV Merger Script
-================
-Downloads existing google_play_apps.csv from WordPress,
-merges it with newly scraped data, and removes duplicates by App Link.
+CSV Merger Script (All Files)
+=============================
+Downloads existing CSV files from WordPress,
+merges them with newly scraped data, and removes duplicates by App Link.
+
+Handles:
+- google_play_apps.csv
+- app_store_apps.csv
+- google_play_similar_apps.csv
 """
 
 import requests
@@ -13,28 +18,32 @@ from datetime import datetime
 from pathlib import Path
 
 class CSVMerger:
-    def __init__(self, existing_csv_url, local_csv_file='google_play_apps.csv'):
+    def __init__(self, existing_csv_url_base, local_csv_file='google_play_apps.csv'):
         """
         Initialize the merger
         
-        :param existing_csv_url: URL to download existing CSV from
+        :param existing_csv_url_base: Base URL for downloads (without filename)
         :param local_csv_file: Local scraped CSV file to merge
         """
-        self.existing_csv_url = existing_csv_url
+        self.existing_csv_url_base = existing_csv_url_base  # e.g., http://rankmyapps.com/wp-content/themes/astra-child/
         self.local_csv_file = local_csv_file
         self.merged_file = local_csv_file
         self.existing_data = {}
         self.new_data = {}
         
+    
     def download_existing_csv(self):
         """Download existing CSV from WordPress"""
         print("\n" + "="*70)
-        print("STEP 1: Downloading existing CSV from WordPress")
+        print(f"STEP 1: Downloading existing {self.local_csv_file} from WordPress")
         print("="*70)
         
+        # Construct full download URL
+        download_url = self.existing_csv_url_base.rstrip('/') + '/' + self.local_csv_file
+        
         try:
-            print(f"Downloading from: {self.existing_csv_url}")
-            response = requests.get(self.existing_csv_url, timeout=30)
+            print(f"Downloading from: {download_url}")
+            response = requests.get(download_url, timeout=30)
             response.raise_for_status()
             
             # Parse downloaded CSV
@@ -189,18 +198,62 @@ class CSVMerger:
 
 
 def main():
-    """Main entry point"""
+    """Main entry point - merge all 3 CSV files"""
     # Configuration
-    EXISTING_CSV_URL = 'http://rankmyapps.com/wp-content/themes/astra-child/google_play_apps.csv'
-    LOCAL_CSV_FILE = 'google_play_apps.csv'
+    EXISTING_CSV_URL_BASE = 'http://rankmyapps.com/wp-content/themes/astra-child/'
+    CSV_FILES = [
+        'google_play_apps.csv',
+        'app_store_apps.csv',
+        'google_play_similar_apps.csv'
+    ]
     
-    merger = CSVMerger(EXISTING_CSV_URL, LOCAL_CSV_FILE)
-    success = merger.run()
+    print("\n")
+    print("╔" + "="*68 + "╗")
+    print("║" + " "*15 + "CSV MERGE AND DEDUPLICATION TOOL" + " "*20 + "║")
+    print("║" + " "*68 + "║")
+    print("║" + f" Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + " "*40 + "║")
+    print("║" + f" Processing: {len(CSV_FILES)} CSV files" + " "*50 + "║")
+    print("╚" + "="*68 + "╝")
     
-    if success:
-        print("Next step: Upload google_play_apps.csv to WordPress via FTP/SFTP")
+    all_success = True
     
-    return 0 if success else 1
+    # Process each CSV file
+    for csv_file in CSV_FILES:
+        print(f"\n{'#'*70}")
+        print(f"# Processing: {csv_file}")
+        print(f"{'#'*70}")
+        
+        merger = CSVMerger(EXISTING_CSV_URL_BASE, csv_file)
+        
+        # Step 1: Download existing
+        if not merger.download_existing_csv():
+            print(f"⚠ Warning: Could not download existing file, will use new data only")
+        
+        # Step 2: Load new data
+        if not merger.load_new_data():
+            print(f"✗ Error: Could not load new data for {csv_file}")
+            all_success = False
+            continue
+        
+        # Step 3: Merge
+        merged_data = merger.merge_data()
+        
+        # Step 4: Save
+        if not merger.save_merged_csv(merged_data):
+            print(f"✗ Error: Could not save merged data for {csv_file}")
+            all_success = False
+            continue
+        
+        print(f"✓ {csv_file} successfully merged and saved\n")
+    
+    print("\n" + "="*70)
+    if all_success:
+        print("✓ ALL FILES MERGED - Ready for FTP upload")
+    else:
+        print("⚠ Some files had errors - check logs above")
+    print("="*70 + "\n")
+    
+    return 0 if all_success else 1
 
 
 if __name__ == '__main__':
