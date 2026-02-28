@@ -33,13 +33,16 @@ jobs:
           if [ -f google_play_apps.csv ]; then
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
+            
+            # Setup union merge driver to avoid conflicts when both workflows append lines
+            echo "google_play_apps.csv merge=union" > .gitattributes
+            git add .gitattributes
             git add google_play_apps.csv
             
             if ! git diff --staged --quiet; then
               git commit -m "Automated update of google_play_apps.csv (similar apps)"
-              # Fetch latest and merge properly (don't lose data)
-              git fetch origin master
-              git merge origin/master -m "Merge Categories and Similar Apps data" --allow-unrelated-histories || true
+              # Pull with no-rebase to trigger a merge, trusting the union driver for conflicts
+              git pull origin master --no-rebase -m "Merge automated updates" || true
               git push origin master
             else
               echo "No changes detected. Skipping commit."
