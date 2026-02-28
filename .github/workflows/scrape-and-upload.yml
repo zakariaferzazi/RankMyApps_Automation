@@ -1,0 +1,58 @@
+name: Scrape Apps & Merge Data
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  scrape-and-merge:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt requests
+      
+      - name: Run Google Play Apps scraper (by category)
+        run: python scrape_google_play_apps.py
+        continue-on-error: true
+      
+      - name: Run Google Play Apps scraper (by similar)
+        run: python scrape_apps_by_similar.py
+        continue-on-error: true
+      
+      - name: Run App Store scraper
+        run: python appstore_search_by_category.py
+        continue-on-error: true
+      
+      - name: Merge with existing data
+        run: python merge_csv_data.py
+      
+      - name: Upload to WordPress via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.1.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /wp-content/themes/astra-child/
+          state-name: .ftp-deploy-sync-state.json
+          dangerous-single-file-sync: false
+          skip-delete: true
+      
+      - name: Notify completion
+        if: always()
+        run: |
+          echo "✓ Scraping and merge completed"
+          echo "✓ Files uploaded to WordPress"
