@@ -10,6 +10,8 @@ import csv
 import os
 from datetime import datetime
 from datetime import timedelta
+from collections import Counter
+import re
 
 # ===========================
 # CONFIGURATION - EDIT HERE
@@ -68,7 +70,39 @@ CATEGORIES = {
     "Weather": "WEATHER",
     "Games": "GAME",
 }
-
+def extract_keywords_from_description(description, num_keywords=5):
+    """Extract most common keywords from description"""
+    if not description or description == "N/A":
+        return "N/A"
+    
+    # Convert to lowercase and remove special characters
+    text = description.lower()
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+', '', text)
+    # Remove special characters but keep spaces
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    
+    # Common stop words to ignore
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from',
+        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+        'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these',
+        'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where',
+        'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
+        'no', 'nor', 'not', 'only', 'so', 'than', 'as', 'if', 'because', 'while', 'although'
+    }
+    
+    # Split and filter words
+    words = [word for word in text.split() if len(word) > 2 and word not in stop_words]
+    
+    if not words:
+        return "N/A"
+    
+    # Count word frequencies and get top keywords
+    word_freq = Counter(words)
+    top_keywords = [word for word, _ in word_freq.most_common(num_keywords)]
+    
+    return ', '.join(top_keywords) if top_keywords else "N/A"
 def extract_release_date(page_source, app_url):
     """Extract release date using the existing pattern"""
     target_string = 'dappgame_ratings"]]],["'
@@ -182,6 +216,20 @@ def extract_app_details(app_url, category_name):
         if rating == "N/A" or "Download" in review_count or "Install" in review_count:
             review_count = "N/A"
         
+        # Extract description
+        description = "N/A"
+        description_tag = soup.find('div', {'data-expandable-section': True})
+        if description_tag:
+            description = description_tag.text.strip()
+        else:
+            # Try alternative selectors
+            desc_tags = soup.find_all('div', {'class': 'bARER'})
+            if desc_tags:
+                description = ' '.join([tag.text.strip() for tag in desc_tags])
+        
+        # Extract keywords from description
+        keywords = extract_keywords_from_description(description)
+        
         # Extract release date
         release_date = extract_release_date(page_source, app_url)
         
@@ -216,7 +264,9 @@ def extract_app_details(app_url, category_name):
             'rating': rating,
             'review_count': review_count,
             'app_link': app_url,
-            'developer': developer
+            'developer': developer,
+            'description': description,
+            'keywords': keywords
         }
         
     except Exception as e:
@@ -308,7 +358,9 @@ def save_to_csv(apps_data, filename='google_play_apps.csv', append=False):
         'Rating',
         'Review Count',
         'App Link',
-        'Developer'
+        'Developer',
+        'Description',
+        'Keywords'
     ]
     
     try:
@@ -319,7 +371,7 @@ def save_to_csv(apps_data, filename='google_play_apps.csv', append=False):
         with open(csv_path, mode, newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
                 'niche', 'app_name', 'logo_url', 'install_count', 
-                'release_date', 'rating', 'review_count', 'app_link', 'developer'
+                'release_date', 'rating', 'review_count', 'app_link', 'developer', 'description', 'keywords'
             ])
             
             # Write header only if file is new or we're overwriting

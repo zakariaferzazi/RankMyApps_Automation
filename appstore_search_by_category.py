@@ -2,6 +2,8 @@ import requests
 import csv
 import time
 from datetime import datetime, timedelta
+from collections import Counter
+import re
 
 # ===========================
 # CONFIGURATION - EDIT HERE
@@ -44,6 +46,40 @@ CATEGORIES = {
 
 # Countries to search (using correct iTunes store country codes)
 COUNTRIES = ['us', 'gb', 'ca', 'fr', 'de', 'ie', 'nl', 'no', 'ch']
+
+def extract_keywords_from_description(description, num_keywords=5):
+    """Extract most common keywords from description"""
+    if not description or description == "":
+        return "N/A"
+    
+    # Convert to lowercase and remove special characters
+    text = description.lower()
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+', '', text)
+    # Remove special characters but keep spaces
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    
+    # Common stop words to ignore
+    stop_words = {
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from',
+        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+        'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these',
+        'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where',
+        'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
+        'no', 'nor', 'not', 'only', 'so', 'than', 'as', 'if', 'because', 'while', 'although'
+    }
+    
+    # Split and filter words
+    words = [word for word in text.split() if len(word) > 2 and word not in stop_words]
+    
+    if not words:
+        return "N/A"
+    
+    # Count word frequencies and get top keywords
+    word_freq = Counter(words)
+    top_keywords = [word for word, _ in word_freq.most_common(num_keywords)]
+    
+    return ', '.join(top_keywords) if top_keywords else "N/A"
 
 class AppStoreSearcher:
     def __init__(self, days_threshold=None):
@@ -176,6 +212,9 @@ class AppStoreSearcher:
                 formatted_review_count = str(review_count)
             
             # Prepare metadata dictionary (simplified fields only)
+            description = app_info.get('description', '')
+            keywords = extract_keywords_from_description(description)
+            
             metadata = {
                 'Niche': app_info.get('primaryGenreName', ''),
                 'App Name': app_info.get('trackName', ''),
@@ -186,6 +225,8 @@ class AppStoreSearcher:
                 'Review Count': formatted_review_count,
                 'App Link': app_info.get('trackViewUrl', ''),
                 'Developer': app_info.get('artistName', ''),
+                'Description': description,
+                'Keywords': keywords,
             }
             
             print(f"✓ App {app_id}: {metadata['App Name']} - Released {days_since_release} days ago")
@@ -240,7 +281,7 @@ class AppStoreSearcher:
         print(f"{'='*70}\n")
         
         # Define fields and write header (use keys from get_app_metadata to ensure consistency)
-        fieldnames = ['Niche', 'App Name', 'Logo URL', 'Install Count', 'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer']
+        fieldnames = ['Niche', 'App Name', 'Logo URL', 'Install Count', 'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer', 'Description', 'Keywords']
         
         # Initialize file with headers
         with open(output_file, 'w', newline='', encoding='utf-8') as f:
