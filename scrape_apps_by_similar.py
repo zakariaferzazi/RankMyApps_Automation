@@ -24,7 +24,7 @@ from collections import deque, Counter
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 10, 
+    'MAX_APPS_TO_SCRAPE': 3000, 
     
     # The starting app URL too find similar apps from
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
@@ -279,7 +279,7 @@ class SimilarAppsScraper:
                 desc_tags = soup.find_all('div', {'class': 'bARER'})
                 if desc_tags:
                     description = ' '.join([tag.text.strip() for tag in desc_tags])
-            print(f"  Description extracted: {description}...")  # Print first 60 chars of description
+            
             # --- Extract Keywords from Description ---
             keywords = extract_keywords_from_description(description)
             
