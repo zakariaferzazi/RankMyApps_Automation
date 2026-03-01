@@ -11,6 +11,18 @@ import os
 from datetime import datetime
 from datetime import timedelta
 
+# ===========================
+# CONFIGURATION - EDIT HERE
+# ===========================
+CONFIG = {
+    # Filter apps by release date (True = filter, False = include all apps)
+    'FILTER_BY_RELEASE_DATE': True,
+    
+    # How many months back to include (only used if FILTER_BY_RELEASE_DATE = True)
+    # Example: 3 = last 3 months, 6 = last 6 months, 12 = last year
+    'MONTHS_THRESHOLD': 3,
+}
+
 # Set up Chrome WebDriver in headless mode for GitHub Actions
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")
@@ -173,24 +185,25 @@ def extract_app_details(app_url, category_name):
         # Extract release date
         release_date = extract_release_date(page_source, app_url)
         
-        # --- Filter by release date: only keep if within last 3 months ---
-        def is_within_last_3_months(date_str):
-            try:
-                # Example format: Feb 11, 2025
-                parsed_date = datetime.strptime(date_str, "%b %d, %Y")
-                now = datetime.now()
-                # Calculate the difference in months
-                months_diff = (now.year - parsed_date.year) * 12 + (now.month - parsed_date.month)
-                # If the app was released in the current month, months_diff == 0
-                # If released in the last 3 months (0, 1, 2), keep it
-                return 0 <= months_diff < 3
-            except Exception as e:
-                print(f"  [Date Filter] Could not parse release date '{date_str}': {e}")
-                return False
+        # --- Filter by release date (OPTIONAL) ---
+        if CONFIG['FILTER_BY_RELEASE_DATE']:
+            def is_within_threshold(date_str, months=CONFIG['MONTHS_THRESHOLD']):
+                try:
+                    # Example format: Feb 11, 2025
+                    parsed_date = datetime.strptime(date_str, "%b %d, %Y")
+                    now = datetime.now()
+                    # Calculate the difference in months
+                    months_diff = (now.year - parsed_date.year) * 12 + (now.month - parsed_date.month)
+                    # If released within threshold months, keep it
+                    return 0 <= months_diff < months
+                except Exception as e:
+                    print(f"  [Date Filter] Could not parse release date '{date_str}': {e}")
+                    return False
 
-        if release_date == "N/A" or not is_within_last_3_months(release_date):
-            print(f"  [Date Filter] Skipping app (release date: {release_date})")
-            return None
+            if release_date == "N/A" or not is_within_threshold(release_date):
+                print(f"  [Date Filter] Skipping app (release date: {release_date})")
+                return None
+        
         # Debug print
         print(f"  App: {app_name}, Installs: {install_count}, Date: {release_date}")
         

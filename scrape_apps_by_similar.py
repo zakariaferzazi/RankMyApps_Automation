@@ -24,7 +24,7 @@ from collections import deque
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 3000, 
+    'MAX_APPS_TO_SCRAPE': 30, 
     
     # The starting app URL to find similar apps from
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
@@ -32,8 +32,11 @@ CONFIG = {
     # Output file name (shared with category scraper)
     'OUTPUT_CSV': 'google_play_similar_apps.csv',
     
-    # Filter apps by release date? (Only keep apps released in last 3 months)
+    # Filter apps by release date? (True = filter, False = include all apps)
     'ONLY_RECENT_APPS': True,
+    
+    # How many months back to include (only used if ONLY_RECENT_APPS = True)
+    'MONTHS_THRESHOLD': 3,
     
     # Minimum install count required to save the app
     'MIN_INSTALLS': 5000,
@@ -238,8 +241,9 @@ class SimilarAppsScraper:
                     parsed_date = datetime.strptime(release_date, "%b %d, %Y")
                     now = datetime.now()
                     months_diff = (now.year - parsed_date.year) * 12 + (now.month - parsed_date.month)
-                    if not (0 <= months_diff < 3):
-                        print(f"    [Skipping] Release date '{release_date}' is outside 3 month window.")
+                    months_threshold = CONFIG.get('MONTHS_THRESHOLD', 3)
+                    if not (0 <= months_diff < months_threshold):
+                        print(f"    [Skipping] Release date '{release_date}' is outside {months_threshold} month window.")
                         return None
                 except Exception as e:
                     print(f"    [Skipping] Could not verify release date: {release_date}")

@@ -3,6 +3,18 @@ import csv
 import time
 from datetime import datetime, timedelta
 
+# ===========================
+# CONFIGURATION - EDIT HERE
+# ===========================
+CONFIG = {
+    # Filter apps by release date (True = filter, False = include all apps)
+    'FILTER_BY_RELEASE_DATE': True,
+    
+    # How many days back to include (only used if FILTER_BY_RELEASE_DATE = True)
+    # Example: 90 = last 90 days, 180 = last 6 months, 365 = last year
+    'DAYS_THRESHOLD': 90,
+}
+
 # App Store category IDs for RSS feeds
 CATEGORIES = {
     'games': 6014,
@@ -34,11 +46,11 @@ CATEGORIES = {
 COUNTRIES = ['us', 'gb', 'ca', 'fr', 'de', 'ie', 'nl', 'no', 'ch']
 
 class AppStoreSearcher:
-    def __init__(self, days_threshold=90):
+    def __init__(self, days_threshold=None):
         """
         Initialize the App Store searcher
         
-        :param days_threshold: Only fetch apps released within this many days
+        :param days_threshold: Only fetch apps released within this many days (overrides CONFIG if provided)
         """
         self.rss_url_template = "https://itunes.apple.com/{country}/rss/topfreeapplications/limit=200/genre={genre_id}/json"
         self.lookup_url = "https://itunes.apple.com/lookup"
@@ -46,8 +58,9 @@ class AppStoreSearcher:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
             'Accept': 'application/json',
         }
-        self.days_threshold = days_threshold
-        self.cutoff_date = datetime.now() - timedelta(days=days_threshold)
+        self.filter_by_date = CONFIG['FILTER_BY_RELEASE_DATE']
+        self.days_threshold = days_threshold if days_threshold is not None else CONFIG['DAYS_THRESHOLD']
+        self.cutoff_date = datetime.now() - timedelta(days=self.days_threshold)
         self.all_apps = {}  # Use dict to avoid duplicates (key: app_id)
     
     def estimate_install_count(self, review_count):
@@ -140,8 +153,8 @@ class AppStoreSearcher:
                 "%Y-%m-%dT%H:%M:%SZ"
             )
             
-            # Check if app was released within the threshold
-            if release_date < self.cutoff_date:
+            # Check if app was released within the threshold (OPTIONAL)
+            if self.filter_by_date and release_date < self.cutoff_date:
                 return None
             
             # Calculate days since release for filtering and display
