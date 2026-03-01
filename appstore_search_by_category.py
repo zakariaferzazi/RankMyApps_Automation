@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 # ===========================
 CONFIG = {
     # Filter apps by release date (True = filter, False = include all apps)
-    'FILTER_BY_RELEASE_DATE': True,
+    'FILTER_BY_RELEASE_DATE': False,
     
-    # How many days back to include (only used if FILTER_BY_RELEASE_DATE = True)
+    # How many days back too include (only used if FILTER_BY_RELEASE_DATE = True)
     # Example: 90 = last 90 days, 180 = last 6 months, 365 = last year
     'DAYS_THRESHOLD': 90,
 }

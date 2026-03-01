@@ -24,16 +24,16 @@ from collections import deque
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 30, 
+    'MAX_APPS_TO_SCRAPE': 3000, 
     
-    # The starting app URL to find similar apps from
+    # The starting app URL too find similar apps from
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
     
     # Output file name (shared with category scraper)
     'OUTPUT_CSV': 'google_play_similar_apps.csv',
     
     # Filter apps by release date? (True = filter, False = include all apps)
-    'ONLY_RECENT_APPS': True,
+    'ONLY_RECENT_APPS': False,
     
     # How many months back to include (only used if ONLY_RECENT_APPS = True)
     'MONTHS_THRESHOLD': 3,
