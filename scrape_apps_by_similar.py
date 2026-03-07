@@ -24,10 +24,10 @@ from collections import deque, Counter
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 10, 
+    'MAX_APPS_TO_SCRAPE': 3000, 
     
     # The starting app URL too find similar apps from
-    'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.enlivion.scaleforgrams',
+    'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.flutterdragon.gramscale',
     
     # Output file name (shared with category scraper)
     'OUTPUT_CSV': 'google_play_similar_apps.csv',

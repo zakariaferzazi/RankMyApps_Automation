@@ -26,8 +26,19 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install requests
 
+      - name: Fetch existing CSV from remote
+        run: git fetch origin ${{ github.ref_name }} && git checkout origin/${{ github.ref_name }} -- app_store_apps.csv || true
+
       - name: Run App Store Scraping Script
         run: python appstore_search_by_category.py
+
+      - name: Commit updated CSV to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app_store_apps.csv
+          git diff --staged --quiet || git commit -m "chore: update app_store_apps.csv [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git push origin ${{ github.ref_name }}
 
       - name: Upload to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
