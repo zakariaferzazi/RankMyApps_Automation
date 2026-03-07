@@ -32,9 +32,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin ${{ github.ref_name }}
           git add google_play_similar_apps.csv
           git diff --staged --quiet || git commit -m "chore: update google_play_similar_apps.csv [$(date -u '+%Y-%m-%d %H:%M UTC')]"
-          git pull --rebase origin ${{ github.ref_name }}
           git push origin ${{ github.ref_name }}
 
       - name: Upload to WordPress via FTP
