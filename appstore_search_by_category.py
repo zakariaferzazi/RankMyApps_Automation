@@ -1,6 +1,7 @@
 import requests
 import csv
 import time
+import random
 from datetime import datetime, timedelta
 from collections import Counter
 import re
@@ -101,27 +102,32 @@ class AppStoreSearcher:
     
     def estimate_install_count(self, review_count):
         """
-        Estimate install count based on review count
-        
-        :param review_count: Number of reviews
-        :return: Estimated install count range as string
+        Estimate install count based on review count.
+        Returns a single random number within the estimated range.
         """
+        def fmt(n):
+            if n >= 1_000_000:
+                return f"{n/1_000_000:.1f}M".replace('.0M', 'M')
+            elif n >= 1_000:
+                return f"{n/1_000:.1f}K".replace('.0K', 'K')
+            return str(n)
+
         if review_count <= 10:
-            return "500 – 1,2K"
+            return fmt(random.randint(500, 1_200))
         elif review_count <= 50:
-            return "1,2K – 6K"
+            return fmt(random.randint(1_200, 6_000))
         elif review_count <= 200:
-            return "6K – 24K"
+            return fmt(random.randint(6_000, 24_000))
         elif review_count <= 1000:
-            return "24K – 120K"
+            return fmt(random.randint(24_000, 120_000))
         elif review_count <= 5000:
-            return "120K – 600K"
+            return fmt(random.randint(120_000, 600_000))
         elif review_count <= 20000:
-            return "600K – 2,4M"
+            return fmt(random.randint(600_000, 2_400_000))
         elif review_count <= 100000:
-            return "2,4M – 12M"
+            return fmt(random.randint(2_400_000, 12_000_000))
         else:
-            return "12M+"
+            return fmt(random.randint(12_000_000, 50_000_000))
         
     def search_by_category(self, category_id, country='us', limit=200):
         """
@@ -215,6 +221,12 @@ class AppStoreSearcher:
             description = app_info.get('description', '')
             keywords = extract_keywords_from_description(description)
             
+            # Extract up to 4 screenshots (prefer iPhone, fallback to iPad)
+            screenshot_urls = app_info.get('screenshotUrls', []) or app_info.get('ipadScreenshotUrls', [])
+            screenshots = screenshot_urls[:4]
+            while len(screenshots) < 4:
+                screenshots.append('N/A')
+            
             metadata = {
                 'Niche': app_info.get('primaryGenreName', ''),
                 'App Name': app_info.get('trackName', ''),
@@ -227,6 +239,10 @@ class AppStoreSearcher:
                 'Developer': app_info.get('artistName', ''),
                 'Description': description,
                 'Keywords': keywords,
+                'Screenshot 1': screenshots[0],
+                'Screenshot 2': screenshots[1],
+                'Screenshot 3': screenshots[2],
+                'Screenshot 4': screenshots[3],
             }
             
             print(f"✓ App {app_id}: {metadata['App Name']} - Released {days_since_release} days ago")
@@ -281,7 +297,7 @@ class AppStoreSearcher:
         print(f"{'='*70}\n")
         
         # Define fields and write header (use keys from get_app_metadata to ensure consistency)
-        fieldnames = ['Niche', 'App Name', 'Logo URL', 'Install Count', 'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer', 'Description', 'Keywords']
+        fieldnames = ['Niche', 'App Name', 'Logo URL', 'Install Count', 'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer', 'Description', 'Keywords', 'Screenshot 1', 'Screenshot 2', 'Screenshot 3', 'Screenshot 4']
         
         # Initialize file with headers
         with open(output_file, 'w', newline='', encoding='utf-8') as f:

@@ -24,7 +24,7 @@ from collections import deque, Counter
 # ===========================
 CONFIG = {
     # How many apps to extract data for (Fast process = smaller number, Long process = larger number)
-    'MAX_APPS_TO_SCRAPE': 3000, 
+    'MAX_APPS_TO_SCRAPE': 10, 
     
     # The starting app URL too find similar apps from
     'SEED_APP_URL': 'https://play.google.com/store/apps/details?id=com.flutterdragon.gramscale',
@@ -39,7 +39,7 @@ CONFIG = {
     'MONTHS_THRESHOLD': 3,
     
     # Minimum install count required to save the app
-    'MIN_INSTALLS': 5000,
+    'MIN_INSTALLS': 1,
     
     # Crawling settings
     'CRAWL_DEPTH': 10,
@@ -256,6 +256,24 @@ class SimilarAppsScraper:
                 logo_tag = soup.find('img', {'itemprop': 'image'})
             logo_url = logo_tag['src'] if logo_tag and 'src' in logo_tag.attrs else "N/A"
             
+            # --- Extract up to 4 Screenshots ---
+            logo_src = logo_url
+            screenshot_imgs = [
+                img['src'] for img in soup.find_all('img', src=True)
+                if 'play-lh.googleusercontent.com' in img.get('src', '')
+                and img.get('src') != logo_src
+                and img.get('itemprop') != 'image'
+            ]
+            seen = set()
+            screenshot_imgs_deduped = []
+            for s in screenshot_imgs:
+                if s not in seen:
+                    seen.add(s)
+                    screenshot_imgs_deduped.append(s)
+            screenshots = screenshot_imgs_deduped[:4]
+            while len(screenshots) < 4:
+                screenshots.append('N/A')
+            
             # --- Extract Rating ---
             rating_tag = soup.find('div', {'class': 'jILTFe'})
             rating = rating_tag.text.strip() if rating_tag else "N/A"
@@ -318,7 +336,11 @@ class SimilarAppsScraper:
                 'App Link': app_url,
                 'Developer': developer,
                 'Description': description,
-                'Keywords': keywords
+                'Keywords': keywords,
+                'Screenshot 1': screenshots[0],
+                'Screenshot 2': screenshots[1],
+                'Screenshot 3': screenshots[2],
+                'Screenshot 4': screenshots[3],
             }
             
         except Exception as e:
@@ -333,7 +355,8 @@ class SimilarAppsScraper:
         csv_path = os.path.join(os.path.dirname(__file__), CONFIG['OUTPUT_CSV'])
         headers = [
             'Niche', 'App Name', 'Logo URL', 'Install Count', 
-            'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer', 'Description', 'Keywords'
+            'Release Date', 'Rating', 'Review Count', 'App Link', 'Developer',
+            'Description', 'Keywords', 'Screenshot 1', 'Screenshot 2', 'Screenshot 3', 'Screenshot 4'
         ]
         
         file_exists = os.path.exists(csv_path)

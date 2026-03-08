@@ -204,6 +204,25 @@ def extract_app_details(app_url, category_name):
             logo_tag = soup.find('img', {'itemprop': 'image'})
         logo_url = logo_tag['src'] if logo_tag and 'src' in logo_tag.attrs else "N/A"
         
+        # Extract up to 4 screenshots (play-lh CDN images that are NOT the logo)
+        logo_src = logo_url
+        screenshot_imgs = [
+            img['src'] for img in soup.find_all('img', src=True)
+            if 'play-lh.googleusercontent.com' in img.get('src', '')
+            and img.get('src') != logo_src
+            and img.get('itemprop') != 'image'
+        ]
+        # Deduplicate while preserving order
+        seen = set()
+        screenshot_imgs_deduped = []
+        for s in screenshot_imgs:
+            if s not in seen:
+                seen.add(s)
+                screenshot_imgs_deduped.append(s)
+        screenshots = screenshot_imgs_deduped[:4]
+        while len(screenshots) < 4:
+            screenshots.append('N/A')
+        
         # Extract rating
         rating_tag = soup.find('div', {'class': 'jILTFe'})
         rating = rating_tag.text.strip() if rating_tag else "N/A"
@@ -266,7 +285,11 @@ def extract_app_details(app_url, category_name):
             'app_link': app_url,
             'developer': developer,
             'description': description,
-            'keywords': keywords
+            'keywords': keywords,
+            'screenshot_1': screenshots[0],
+            'screenshot_2': screenshots[1],
+            'screenshot_3': screenshots[2],
+            'screenshot_4': screenshots[3],
         }
         
     except Exception as e:
@@ -360,7 +383,11 @@ def save_to_csv(apps_data, filename='google_play_apps.csv', append=False):
         'App Link',
         'Developer',
         'Description',
-        'Keywords'
+        'Keywords',
+        'Screenshot 1',
+        'Screenshot 2',
+        'Screenshot 3',
+        'Screenshot 4'
     ]
     
     try:
@@ -371,7 +398,8 @@ def save_to_csv(apps_data, filename='google_play_apps.csv', append=False):
         with open(csv_path, mode, newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=[
                 'niche', 'app_name', 'logo_url', 'install_count', 
-                'release_date', 'rating', 'review_count', 'app_link', 'developer', 'description', 'keywords'
+                'release_date', 'rating', 'review_count', 'app_link', 'developer',
+                'description', 'keywords', 'screenshot_1', 'screenshot_2', 'screenshot_3', 'screenshot_4'
             ])
             
             # Write header only if file is new or we're overwriting
