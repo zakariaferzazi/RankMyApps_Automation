@@ -21,28 +21,7 @@ CONFIG = {
 # App Store category IDs for RSS feeds
 CATEGORIES = {
     'games': 6014,
-    'business': 6000,
-    'weather': 6001,
-    'utilities': 6002,
-    'travel': 6003,
-    'sports': 6004,
-    'social-networking': 6005,
-    'reference': 6006,
-    'productivity': 6007,
-    'photo-video': 6008,
-    'news': 6009,
-    'navigation': 6010,
-    'music': 6011,
-    'lifestyle': 6012,
-    'health-fitness': 6013,
-    'finance': 6015,
-    'entertainment': 6016,
-    'education': 6017,
-    'books': 6018,
-    'medical': 6020,
-    'catalogs': 6022,
-    'food-drink': 6023,
-    'shopping': 6024
+
 }
 
 # Countries to search (using correct iTunes store country codes)
