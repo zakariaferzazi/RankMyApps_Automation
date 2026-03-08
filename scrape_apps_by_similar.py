@@ -257,12 +257,10 @@ class SimilarAppsScraper:
             logo_url = logo_tag['src'] if logo_tag and 'src' in logo_tag.attrs else "N/A"
             
             # --- Extract up to 4 Screenshots ---
-            logo_src = logo_url
+            # Use alt='Screenshot image' attribute which is specific to screenshots in Google Play
             screenshot_imgs = [
-                img['src'] for img in soup.find_all('img', src=True)
-                if 'play-lh.googleusercontent.com' in img.get('src', '')
-                and img.get('src') != logo_src
-                and img.get('itemprop') != 'image'
+                img.get('src') for img in soup.find_all('img', alt='Screenshot image')
+                if img.get('src') and 'play-lh.googleusercontent.com' in img.get('src', '')
             ]
             seen = set()
             screenshot_imgs_deduped = []

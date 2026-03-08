@@ -2,9 +2,11 @@ import requests
 import csv
 import time
 import random
+import json
 from datetime import datetime, timedelta
 from collections import Counter
 import re
+from bs4 import BeautifulSoup
 
 # ===========================
 # CONFIGURATION - EDIT HERE
@@ -143,7 +145,64 @@ class AppStoreSearcher:
         except (KeyError, ValueError) as e:
             print(f"Error parsing response for category {category_id} in {country}: {e}")
             return []
-    
+
+    def _get_screenshots_from_page(self, app_id):
+        """
+        Fallback: fetch the App Store web page and extract screenshot URLs
+        from the embedded serialized-server-data JSON when the iTunes API
+        returns an empty screenshotUrls list.
+        """
+        try:
+            url = f'https://apps.apple.com/us/app/id{app_id}'
+            page_resp = requests.get(url, headers=self.headers, timeout=15)
+            if page_resp.status_code != 200:
+                return []
+            soup_page = BeautifulSoup(page_resp.text, 'html.parser')
+            tag = soup_page.find('script', id='serialized-server-data')
+            if not tag or not tag.string:
+                return []
+            data = json.loads(tag.string)
+
+            # Walk the JSON tree collecting objects keyed 'screenshot'
+            results = []
+
+            def collect(obj, depth=0):
+                if depth > 20:
+                    return
+                if isinstance(obj, dict):
+                    if 'screenshot' in obj and isinstance(obj['screenshot'], dict):
+                        ss = obj['screenshot']
+                        template = ss.get('template', '')
+                        if template and 'mzstatic.com' in template:
+                            width = ss.get('width', 0)
+                            height = ss.get('height', 0)
+                            variants = ss.get('variants', [])
+                            fmt = variants[0].get('format', 'jpg') if variants else 'jpg'
+                            real_url = (template
+                                .replace('{w}', str(width))
+                                .replace('{h}', str(height))
+                                .replace('{c}', 'bb')
+                                .replace('{f}', fmt))
+                            results.append(real_url)
+                    for v in obj.values():
+                        collect(v, depth + 1)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        collect(item, depth)
+
+            collect(data)
+
+            # Deduplicate while preserving order
+            seen = set()
+            unique = []
+            for u in results:
+                if u not in seen:
+                    seen.add(u)
+                    unique.append(u)
+            return unique
+        except Exception:
+            return []
+
     def get_app_metadata(self, app_id):
         """
         Retrieve detailed metadata for a specific app
@@ -200,8 +259,10 @@ class AppStoreSearcher:
             description = app_info.get('description', '')
             keywords = extract_keywords_from_description(description)
             
-            # Extract up to 4 screenshots (prefer iPhone, fallback to iPad)
+            # Extract up to 4 screenshots (prefer iPhone, fallback to iPad, then page scrape)
             screenshot_urls = app_info.get('screenshotUrls', []) or app_info.get('ipadScreenshotUrls', [])
+            if not screenshot_urls:
+                screenshot_urls = self._get_screenshots_from_page(app_id)
             screenshots = screenshot_urls[:4]
             while len(screenshots) < 4:
                 screenshots.append('N/A')

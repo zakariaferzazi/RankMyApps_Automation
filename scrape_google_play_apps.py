@@ -173,13 +173,10 @@ def extract_app_details(app_url, category_name):
             logo_tag = soup.find('img', {'itemprop': 'image'})
         logo_url = logo_tag['src'] if logo_tag and 'src' in logo_tag.attrs else "N/A"
         
-        # Extract up to 4 screenshots (play-lh CDN images that are NOT the logo)
-        logo_src = logo_url
+        # Extract up to 4 screenshots using alt='Screenshot image' (exact HTML attribute from Google Play)
         screenshot_imgs = [
-            img['src'] for img in soup.find_all('img', src=True)
-            if 'play-lh.googleusercontent.com' in img.get('src', '')
-            and img.get('src') != logo_src
-            and img.get('itemprop') != 'image'
+            img.get('src') for img in soup.find_all('img', alt='Screenshot image')
+            if img.get('src') and 'play-lh.googleusercontent.com' in img.get('src', '')
         ]
         # Deduplicate while preserving order
         seen = set()
