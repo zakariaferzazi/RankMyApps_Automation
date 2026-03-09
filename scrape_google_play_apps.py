@@ -34,10 +34,26 @@ chrome_options.add_argument("--window-size=1920,1080")
 
 driver = webdriver.Chrome(options=chrome_options)
 
-# Google Play Store Categories
+# Google Play Store Categories  (names match App Store niches exactly)
 CATEGORIES = {
-    "Art & Design": "ART_AND_DESIGN",
-
+    "Games":               "GAME",
+    "Business":            "BUSINESS",
+    "Education":           "EDUCATION",
+    "Entertainment":       "ENTERTAINMENT",
+    "Finance":             "FINANCE",
+    "Food & Drink":        "FOOD_AND_DRINK",
+    "Health & Fitness":    "HEALTH_AND_FITNESS",
+    "Lifestyle":           "LIFESTYLE",
+    "Medical":             "MEDICAL",
+    "Music":               "MUSIC_AND_AUDIO",
+    "News":                "NEWS_AND_MAGAZINES",
+    "Photo & Video":       "PHOTOGRAPHY",
+    "Productivity":        "PRODUCTIVITY",
+    "Shopping":            "SHOPPING",
+    "Social Networking":   "SOCIAL",
+    "Sports":              "SPORTS",
+    "Travel":              "TRAVEL_AND_LOCAL",
+    "Utilities":           "TOOLS",
 }
 def extract_keywords_from_description(description, num_keywords=5):
     """Extract most common keywords from description"""

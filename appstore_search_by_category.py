@@ -21,9 +21,26 @@ CONFIG = {
 }
 
 # App Store category IDs for RSS feeds
+# App Store Categories (iTunes genre IDs — names match Play Store niches exactly)
 CATEGORIES = {
-    'games': 6014,
-
+    "Games":               6014,
+    "Business":            6000,
+    "Education":           6017,
+    "Entertainment":       6016,
+    "Finance":             6015,
+    "Food & Drink":        6023,
+    "Health & Fitness":    6013,
+    "Lifestyle":           6010,
+    "Medical":             6020,
+    "Music":               6011,
+    "News":                6009,
+    "Photo & Video":       6008,
+    "Productivity":        6007,
+    "Shopping":            6024,
+    "Social Networking":   6005,
+    "Sports":              6004,
+    "Travel":              6003,
+    "Utilities":           6002,
 }
 
 # Countries to search (using correct iTunes store country codes)
@@ -243,6 +260,11 @@ class AppStoreSearcher:
             # Get review count for install estimation
             review_count = app_info.get('userRatingCount', 0)
             
+            # Skip apps with no reviews at all
+            if review_count == 0:
+                print(f"  Skipped (no reviews)")
+                return None
+            
             # Format rating (e.g. 4.7)
             rating_val = app_info.get('averageUserRating', 0)
             formatted_rating = round(float(rating_val), 1) if rating_val else 0
@@ -310,7 +332,8 @@ class AppStoreSearcher:
         print(f"PHASE 1: Searching for apps in {len(categories)} categories across {len(countries)} countries")
         print(f"{'='*70}\n")
         
-        app_ids_set = set()
+        # Map app_id -> category_name so we can stamp the correct niche later
+        app_id_to_category = {}
         
         for category_name in categories:
             if category_name not in CATEGORIES:
@@ -318,20 +341,21 @@ class AppStoreSearcher:
                 continue
                 
             category_id = CATEGORIES[category_name]
-            # Display category name in a readable format
-            display_name = category_name.replace('-', ' ').title()
-            print(f"\n📂 Searching category: {display_name} (ID: {category_id})")
+            print(f"\n📂 Searching category: {category_name} (ID: {category_id})")
             
             for country in countries:
                 print(f"  → Country: {country.upper()}", end=' ')
                 app_ids = self.search_by_category(category_id, country)
-                new_ids = len(set(app_ids) - app_ids_set)
-                app_ids_set.update(app_ids)
+                new_ids = 0
+                for aid in app_ids:
+                    if aid not in app_id_to_category:
+                        app_id_to_category[aid] = category_name
+                        new_ids += 1
                 print(f"({len(app_ids)} found, {new_ids} new)")
                 time.sleep(0.5)  # Rate limiting
         
         print(f"\n{'='*70}")
-        print(f"PHASE 2: Fetching metadata for {len(app_ids_set)} unique apps")
+        print(f"PHASE 2: Fetching metadata for {len(app_id_to_category)} unique apps")
         print(f"Filtering for apps released within the last {self.days_threshold} days")
         print(f"Saving results immediately to {output_file}")
         print(f"{'='*70}\n")
@@ -345,11 +369,14 @@ class AppStoreSearcher:
             writer.writeheader()
         
         # Fetch metadata for each unique app ID
-        for i, app_id in enumerate(app_ids_set, 1):
-            print(f"[{i}/{len(app_ids_set)}] ", end='')
+        total = len(app_id_to_category)
+        for i, (app_id, niche_name) in enumerate(app_id_to_category.items(), 1):
+            print(f"[{i}/{total}] ", end='')
             metadata = self.get_app_metadata(app_id)
             
             if metadata:
+                # Use the category we searched, not primaryGenreName, so niche names match Play Store
+                metadata['Niche'] = niche_name
                 self.all_apps[app_id] = metadata
                 # Save immediately to CSV
                 try:
