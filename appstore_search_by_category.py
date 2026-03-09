@@ -432,16 +432,16 @@ def main():
     
     # Select categories to search (you can customize this list)
     categories_to_search = [
-        'utilities',
-        'productivity',
-        'lifestyle',
-        'entertainment',
-        'photo-video',
-        'health-fitness',
-        'social-networking',
-        'games',
-        'music',
-        'food-drink'
+        'Utilities',
+        'Productivity',
+        'Lifestyle',
+        'Entertainment',
+        'Photo & Video',
+        'Health & Fitness',
+        'Social Networking',
+        'Games',
+        'Music',
+        'Food & Drink',
     ]
     
     # Or search all categories:
