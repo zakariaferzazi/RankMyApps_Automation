@@ -75,10 +75,10 @@ CONFIG = {
     'OUTPUT_CSV': 'google_play_similar_apps.csv',
     
     # Filter apps by release date? (True = filter, False = include all apps)
-    'ONLY_RECENT_APPS': False,
+    'ONLY_RECENT_APPS': True,
     
     # How many months back to include (only used if ONLY_RECENT_APPS = True)
-    'MONTHS_THRESHOLD': 3,
+    'MONTHS_THRESHOLD': 12,
     
     # Minimum install count required to save the app
     'MIN_INSTALLS': 5000,
