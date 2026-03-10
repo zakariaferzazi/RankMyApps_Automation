@@ -18,11 +18,11 @@ import re
 # ===========================
 CONFIG = {
     # Filter apps by release date (True = filter, False = include all apps)
-    'FILTER_BY_RELEASE_DATE': False,
+    'FILTER_BY_RELEASE_DATE': True,
     
     # How many months back too include (only used if FILTER_BY_RELEASE_DATE = True)
     # Example: 3 = last 3 months, 6 = last 6 months, 12 = last year
-    'MONTHS_THRESHOLD': 3,
+    'MONTHS_THRESHOLD': 12,
 }
 
 # Set up Chrome WebDriver in headless mode for GitHub Actions
