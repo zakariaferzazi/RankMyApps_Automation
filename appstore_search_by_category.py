@@ -80,6 +80,29 @@ def extract_keywords_from_description(description, num_keywords=5):
     
     return ', '.join(top_keywords) if top_keywords else "N/A"
 
+# Date formats the iTunes API may return
+_ITUNES_DATE_FORMATS = (
+    "%Y-%m-%dT%H:%M:%SZ",     # standard:   2024-01-15T08:00:00Z
+    "%Y-%m-%dT%H:%M:%S.%fZ",  # with ms:    2024-01-15T08:00:00.000Z
+    "%Y-%m-%dT%H:%M:%S%z",    # with tz:    2024-01-15T08:00:00+00:00
+    "%Y-%m-%dT%H:%M:%S.%f%z", # ms + tz:    2024-01-15T08:00:00.000+00:00
+)
+
+
+def _parse_itunes_date(date_str: str):
+    """Parse an iTunes API date string, handling all known Apple date formats."""
+    if not date_str:
+        return None
+    for fmt in _ITUNES_DATE_FORMATS:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            # Strip tzinfo so comparisons with datetime.now() work cleanly
+            return dt.replace(tzinfo=None)
+        except ValueError:
+            continue
+    return None
+
+
 class AppStoreSearcher:
     def __init__(self, days_threshold=None):
         """
@@ -240,20 +263,21 @@ class AppStoreSearcher:
             
             app_info = app_data['results'][0]
             
-            # Parse release date
+            # Parse release date.
+            # releaseDate = original first-publish date on the App Store.
             release_date_str = app_info.get('releaseDate', '')
             if not release_date_str:
                 return None
-                
-            release_date = datetime.strptime(
-                release_date_str,
-                "%Y-%m-%dT%H:%M:%SZ"
-            )
-            
+
+            release_date = _parse_itunes_date(release_date_str)
+            if release_date is None:
+                print(f"  Skipped (unparseable date: {release_date_str!r})")
+                return None
+
             # Check if app was released within the threshold (OPTIONAL)
             if self.filter_by_date and release_date < self.cutoff_date:
                 return None
-            
+
             # Calculate days since release for filtering and display
             days_since_release = (datetime.now() - release_date).days
             
